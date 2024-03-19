@@ -1,5 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const cors = require("cors");
 
 mongoose
@@ -12,6 +14,11 @@ mongoose
   )
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("Failed to connect to MongoDB", err));
+
+const User = mongoose.model("User", {
+  email: String,
+  password: String,
+});
 
 const Event = mongoose.model("Event", {
   title: String,
@@ -26,7 +33,6 @@ const Event = mongoose.model("Event", {
 
 const app = express();
 app.use(express.json());
-
 app.use(cors());
 
 app.use((req, res, next) => {
@@ -36,6 +42,56 @@ app.use((req, res, next) => {
     "Origin, X-Requested-With, Content-Type, Accept"
   );
   next();
+});
+
+app.post("/register", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ email, password: hashedPassword });
+    await user.save();
+
+    const token = jwt.sign({ userId: user._id }, "your_secret_key", {
+      expiresIn: "1h",
+    });
+
+    res.status(201).json({ message: "User registered successfully", token });
+  } catch (error) {
+    console.error("Error registering user:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Логін
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const token = jwt.sign({ userId: user._id }, "your_secret_key", {
+      expiresIn: "1h",
+    });
+
+    res.json({ token });
+  } catch (error) {
+    console.error("Error logging in:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 app.post("/events", async (req, res) => {
