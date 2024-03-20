@@ -208,7 +208,7 @@ app.get("/events/:year/:month", validToken, async (req, res) => {
           : validMonthNames[(validMonthNames.indexOf(month) - 1 + 12) % 12],
       year: month === "January" ? parseInt(year) - 1 : parseInt(year),
       dayOfWeek: dayNames[(firstDayIndex - daysFromPrevMonth + i + 7) % 7],
-      events: [], // Додати масив для івентів
+      event: null,
     }));
 
     const currentMonthDays = Array.from({ length: daysInMonth }, (_, i) => {
@@ -219,23 +219,26 @@ app.get("/events/:year/:month", validToken, async (req, res) => {
         month,
         year: parseInt(year),
         dayOfWeek,
-        events: [], // Додати масив для івентів
+        event: null,
       };
     });
 
-    // Додати івенти до відповідних днів
     events.forEach((event) => {
-      const eventDay = currentMonthDays.find(
-        (day) => day.day === event.date.day
-      );
-      if (eventDay) {
-        eventDay.events.push({
-          id: event._id,
-          title: event.title,
-          description: event.description,
-          color: event.color,
-        });
-      }
+      currentMonthDays.forEach((day) => {
+        if (
+          day.year === event.date.year &&
+          day.month === event.date.month &&
+          day.day === event.date.day &&
+          !day.event
+        ) {
+          day.event = {
+            id: event._id,
+            title: event.title,
+            description: event.description,
+            color: event.color,
+          };
+        }
+      });
     });
 
     const response = {
@@ -247,6 +250,77 @@ app.get("/events/:year/:month", validToken, async (req, res) => {
     res.json(response);
   } catch (err) {
     console.error("Error fetching events:", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.delete("/events/:eventId", validToken, async (req, res) => {
+  const { eventId } = req.params;
+  const userId = req.userId;
+
+  try {
+    const event = await Event.findOneAndDelete({
+      _id: eventId,
+      userId: userId,
+    });
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    res.status(200).json({ message: "Event deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting event:", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.put("/events/:eventId", validToken, async (req, res) => {
+  const { eventId } = req.params;
+  const userId = req.userId;
+  const { title, description, color, date } = req.body;
+
+  try {
+    const event = await Event.findOneAndUpdate(
+      {
+        _id: eventId,
+        userId: userId,
+      },
+      {
+        title: title,
+        description: description,
+        color: color,
+        date: {
+          year: date.year,
+          month: date.month,
+          day: date.day,
+        },
+      },
+      { new: true }
+    );
+
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    const eventData = {
+      id: event._id,
+      title: event.title,
+      description: event.description,
+      date: event.date,
+      color: event.color,
+    };
+
+    const response = {
+      day: date.day,
+      month: date.month,
+      year: date.year,
+      dayOfWeek: date.dayOfWeek,
+      event: eventData,
+    };
+
+    res.status(200).json(response);
+  } catch (err) {
+    console.error("Error updating event:", err);
     res.status(500).send("Internal Server Error");
   }
 });
