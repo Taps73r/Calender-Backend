@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
+const validToken = require("./security/validToken");
 
 mongoose
   .connect(
@@ -21,6 +22,7 @@ const User = mongoose.model("User", {
 });
 
 const Event = mongoose.model("Event", {
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   title: String,
   description: String,
   date: {
@@ -34,15 +36,6 @@ const Event = mongoose.model("Event", {
 const app = express();
 app.use(express.json());
 app.use(cors());
-
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  next();
-});
 
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
@@ -68,7 +61,6 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// Логін
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -94,11 +86,26 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.post("/events", async (req, res) => {
+app.post("/events", validToken, async (req, res) => {
   const { title, description, color, date } = req.body;
+  const userId = req.userId;
 
   try {
+    const existingEvent = await Event.findOne({
+      userId: userId,
+      "date.year": date.year,
+      "date.month": date.month,
+      "date.day": date.day,
+    });
+
+    if (existingEvent) {
+      return res
+        .status(400)
+        .json({ message: "Event already exists for this date" });
+    }
+
     const event = new Event({
+      userId: userId,
       title: title,
       description: description,
       date: {
@@ -120,7 +127,6 @@ app.post("/events", async (req, res) => {
       color: event.color,
     };
 
-    // Повертаємо об'єкт з днем та подією
     const response = {
       day: date.day,
       month: date.month,
@@ -136,7 +142,7 @@ app.post("/events", async (req, res) => {
   }
 });
 
-app.get("/events/:year/:month", async (req, res) => {
+app.get("/events/:year/:month", validToken, async (req, res) => {
   const { year, month } = req.params;
 
   const validMonthNames = [
@@ -202,22 +208,34 @@ app.get("/events/:year/:month", async (req, res) => {
           : validMonthNames[(validMonthNames.indexOf(month) - 1 + 12) % 12],
       year: month === "January" ? parseInt(year) - 1 : parseInt(year),
       dayOfWeek: dayNames[(firstDayIndex - daysFromPrevMonth + i + 7) % 7],
-      events: [], // Пустий масив подій для кожного дня
+      events: [], // Додати масив для івентів
     }));
 
     const currentMonthDays = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
       const dayOfWeek = dayNames[(firstDayIndex + i) % 7];
-      const eventsForDay = events.filter(
-        (event) => event.date.day === day && event.date.month === month
-      );
       return {
         day,
         month,
         year: parseInt(year),
         dayOfWeek,
-        events: eventsForDay, // Події для кожного дня
+        events: [], // Додати масив для івентів
       };
+    });
+
+    // Додати івенти до відповідних днів
+    events.forEach((event) => {
+      const eventDay = currentMonthDays.find(
+        (day) => day.day === event.date.day
+      );
+      if (eventDay) {
+        eventDay.events.push({
+          id: event._id,
+          title: event.title,
+          description: event.description,
+          color: event.color,
+        });
+      }
     });
 
     const response = {
