@@ -236,6 +236,7 @@ app.get("/events/:year/:month", validToken, async (req, res) => {
             title: event.title,
             description: event.description,
             color: event.color,
+            date: event.date,
           };
         }
       });
@@ -274,6 +275,16 @@ app.delete("/events/:eventId", validToken, async (req, res) => {
   }
 });
 
+const dayNames = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
 app.put("/events/:eventId", validToken, async (req, res) => {
   const { eventId } = req.params;
   const userId = req.userId;
@@ -302,6 +313,14 @@ app.put("/events/:eventId", validToken, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
+    // Отримання назви дня тижня
+    const eventDate = new Date(
+      date.year,
+      dayNames.indexOf(date.month),
+      date.day
+    );
+    const dayOfWeek = dayNames[eventDate.getDay()];
+
     const eventData = {
       id: event._id,
       title: event.title,
@@ -314,7 +333,7 @@ app.put("/events/:eventId", validToken, async (req, res) => {
       day: date.day,
       month: date.month,
       year: date.year,
-      dayOfWeek: date.dayOfWeek,
+      dayOfWeek: dayOfWeek, // Додано назву дня тижня
       event: eventData,
     };
 
