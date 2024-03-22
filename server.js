@@ -359,6 +359,7 @@ app.put("/events/:eventId", validToken, async (req, res) => {
 app.get("/events/:title", validToken, async (req, res) => {
   const { title } = req.params;
   const userId = req.userId;
+
   try {
     const event = await Event.findOne({ title, userId });
     if (!event) {
@@ -417,6 +418,7 @@ app.get("/events/:title", validToken, async (req, res) => {
         year: parseInt(year),
         dayOfWeek,
         event: null,
+        holiday: null,
       };
     });
 
@@ -439,6 +441,37 @@ app.get("/events/:title", validToken, async (req, res) => {
       });
     });
 
+    // Перевірка на наявність свята та додавання його до відповіді
+    const countryCode = "UA"; // Код країни України
+    const holidaysResponse = await axios.get(
+      `https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`
+    );
+    const holidays = holidaysResponse.data;
+
+    holidays.forEach((holiday) => {
+      const holidayDate = new Date(holiday.date);
+      currentMonthDays.forEach((day) => {
+        const dayDate = new Date(
+          day.year,
+          validMonthNames.indexOf(day.month),
+          day.day
+        );
+        if (holidayDate.toDateString() === dayDate.toDateString()) {
+          day.holiday = {
+            id: holiday.name,
+            title: holiday.localName,
+            description: holiday.name,
+            color: "#ffb3c1",
+            date: {
+              year: holidayDate.getFullYear(),
+              month: validMonthNames[holidayDate.getMonth()],
+              day: holidayDate.getDate(),
+            },
+          };
+        }
+      });
+    });
+
     // Підготовка відповіді
     const response = {
       year: parseInt(year),
@@ -452,7 +485,6 @@ app.get("/events/:title", validToken, async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
 app.put("/events/update-date/:eventId", validToken, async (req, res) => {
   const { eventId } = req.params;
   const userId = req.userId;
