@@ -38,14 +38,11 @@ router.post("/events", validToken, async (req, res) => {
         .json({ message: "Event already exists for this date" });
     }
 
-    // Отримуємо інформацію про свята з API
-    const countryCode = "UA"; // Код країни України
+    const countryCode = "UA";
     const holidaysResponse = await axios.get(
       `https://date.nager.at/api/v3/PublicHolidays/${date.year}/${countryCode}`
     );
     const holidays = holidaysResponse.data;
-
-    // Перевіряємо, чи дата події збігається з будь-яким святом
     let holiday = null;
     for (const holidayData of holidays) {
       const holidayDate = new Date(holidayData.date);
@@ -54,7 +51,6 @@ router.post("/events", validToken, async (req, res) => {
         holidayDate.getMonth() === validMonthNames.indexOf(date.month) &&
         holidayDate.getDate() === date.day
       ) {
-        // Якщо дата події збігається зі святом, то зберігаємо інформацію про це свято
         holiday = {
           id: holidayData.name,
           title: holidayData.localName,
@@ -70,7 +66,6 @@ router.post("/events", validToken, async (req, res) => {
       }
     }
 
-    // Створюємо подію
     const event = new Event({
       userId: userId,
       title: title,
@@ -100,7 +95,7 @@ router.post("/events", validToken, async (req, res) => {
       year: date.year,
       dayOfWeek: date.dayOfWeek,
       event: eventData,
-      holiday: holiday, // Додаємо інформацію про свято до відповіді
+      holiday: holiday,
     };
 
     res.status(201).json(response);
@@ -132,18 +127,16 @@ router.get("/events/:year/:month", validToken, async (req, res) => {
   }
 
   try {
-    // Отримуємо всі події для вказаного року та місяця
     const events = await Event.find({
       "date.year": parseInt(year),
       "date.month": month,
     });
 
-    const countryCode = "UA"; // Код країни України
+    const countryCode = "UA";
     const holidaysResponse = await axios.get(
       `https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`
     );
     const holidays = holidaysResponse.data;
-    console.log(holidays);
     const daysInMonth = new Date(
       year,
       validMonthNames.indexOf(month) + 1,
@@ -305,7 +298,6 @@ router.put("/events/:eventId", validToken, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Отримання назви дня тижня
     const eventDate = new Date(
       date.year,
       dayNames.indexOf(date.month),
@@ -313,14 +305,12 @@ router.put("/events/:eventId", validToken, async (req, res) => {
     );
     const dayOfWeek = dayNames[eventDate.getDay()];
 
-    // Отримуємо інформацію про свята з API
-    const countryCode = "UA"; // Код країни України
+    const countryCode = "UA";
     const holidaysResponse = await axios.get(
       `https://date.nager.at/api/v3/PublicHolidays/${date.year}/${countryCode}`
     );
     const holidays = holidaysResponse.data;
 
-    // Перевіряємо, чи дата події збігається з будь-яким святом
     let holiday = null;
     for (const holidayData of holidays) {
       const holidayDate = new Date(holidayData.date);
@@ -329,7 +319,6 @@ router.put("/events/:eventId", validToken, async (req, res) => {
         holidayDate.getMonth() === validMonthNames.indexOf(date.month) &&
         holidayDate.getDate() === date.day
       ) {
-        // Якщо дата події збігається зі святом, то зберігаємо інформацію про це свято
         holiday = {
           id: holidayData.name,
           title: holidayData.localName,
@@ -357,9 +346,9 @@ router.put("/events/:eventId", validToken, async (req, res) => {
       day: date.day,
       month: date.month,
       year: date.year,
-      dayOfWeek: dayOfWeek, // Додано назву дня тижня
+      dayOfWeek: dayOfWeek,
       event: eventData,
-      holiday: holiday, // Додаємо інформацію про свято до відповіді
+      holiday: holiday,
     };
 
     res.status(200).json(response);
@@ -379,10 +368,8 @@ router.get("/events/:title", validToken, async (req, res) => {
       return res.status(404).send("Event not found");
     }
 
-    // Отримати рік та місяць знайденої події
     const { year, month } = event.date;
 
-    // Отримати дані за вказаний рік та місяць
     const events = await Event.find({ "date.year": year, "date.month": month });
 
     const validMonthNames = [
@@ -454,8 +441,7 @@ router.get("/events/:title", validToken, async (req, res) => {
       });
     });
 
-    // Перевірка на наявність свята та додавання його до відповіді
-    const countryCode = "UA"; // Код країни України
+    const countryCode = "UA";
     const holidaysResponse = await axios.get(
       `https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`
     );
@@ -485,7 +471,6 @@ router.get("/events/:title", validToken, async (req, res) => {
       });
     });
 
-    // Підготовка відповіді
     const response = {
       year: parseInt(year),
       month,
@@ -518,13 +503,12 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
     "December",
   ];
   try {
-    // Перевірка, чи користувач вже має подію для нової дати
     const existingEvent = await Event.findOne({
       userId: userId,
       "date.year": newDate.year,
       "date.month": newDate.month,
       "date.day": newDate.day,
-      _id: { $ne: eventId }, // Перевірка, щоб eventId не збігався з поточною подією
+      _id: { $ne: eventId },
     });
 
     if (existingEvent) {
@@ -532,15 +516,11 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
         .status(400)
         .json({ message: "User already has an event for this date" });
     }
-
-    // Отримуємо інформацію про свята з API
-    const countryCode = "UA"; // Код країни України
+    const countryCode = "UA";
     const holidaysResponse = await axios.get(
       `https://date.nager.at/api/v3/PublicHolidays/${newDate.year}/${countryCode}`
     );
     const holidays = holidaysResponse.data;
-
-    // Перевірка, чи нова дата події збігається з якимось святом
     let holiday = null;
     for (const holidayData of holidays) {
       const holidayDate = new Date(holidayData.date);
@@ -549,7 +529,6 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
         holidayDate.getMonth() === validMonthNames.indexOf(newDate.month) &&
         holidayDate.getDate() === newDate.day
       ) {
-        // Якщо дата події збігається зі святом, то зберігаємо інформацію про це свято
         holiday = {
           id: holidayData.name,
           title: holidayData.localName,
@@ -565,7 +544,6 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
       }
     }
 
-    // Оновлення дати події
     const event = await Event.findOneAndUpdate(
       {
         _id: eventId,
@@ -581,7 +559,6 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Отримання назви дня тижня нової дати
     const eventDate = new Date(
       newDate.year,
       dayNames.indexOf(newDate.month),
@@ -603,7 +580,7 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
       year: newDate.year,
       dayOfWeek: dayOfWeek,
       event: eventData,
-      holiday: holiday, // Додаємо інформацію про свято до відповіді
+      holiday: holiday,
     };
 
     res.status(200).json(response);
