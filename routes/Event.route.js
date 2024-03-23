@@ -2,27 +2,13 @@ const express = require("express");
 const Event = require("../schema/Event.schema");
 const validToken = require("../security/validToken");
 const axios = require("axios");
+const { dayNames, validMonthNames } = require("../static/filterData");
 
 const router = express.Router();
 
 router.post("/events", validToken, async (req, res) => {
   const { title, description, color, date } = req.body;
   const userId = req.userId;
-
-  const validMonthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
 
   try {
     const existingEvent = await Event.findOne({
@@ -108,20 +94,6 @@ router.post("/events", validToken, async (req, res) => {
 router.get("/events/:year/:month", validToken, async (req, res) => {
   const { year, month } = req.params;
 
-  const validMonthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
   if (!validMonthNames.includes(month)) {
     return res.status(400).send("Invalid month value");
   }
@@ -142,16 +114,6 @@ router.get("/events/:year/:month", validToken, async (req, res) => {
       validMonthNames.indexOf(month) + 1,
       0
     ).getDate();
-
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
 
     const firstDayIndex = new Date(
       year,
@@ -247,34 +209,10 @@ router.delete("/events/:eventId", validToken, async (req, res) => {
   }
 });
 
-const dayNames = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
 router.put("/events/:eventId", validToken, async (req, res) => {
   const { eventId } = req.params;
   const userId = req.userId;
   const { title, description, color, date } = req.body;
-  const validMonthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
   try {
     const event = await Event.findOneAndUpdate(
       {
@@ -372,36 +310,11 @@ router.get("/events/:title", validToken, async (req, res) => {
 
     const events = await Event.find({ "date.year": year, "date.month": month });
 
-    const validMonthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-
     const daysInMonth = new Date(
       year,
       validMonthNames.indexOf(month) + 1,
       0
     ).getDate();
-
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
 
     const firstDayIndex = new Date(
       year,
@@ -488,20 +401,6 @@ router.put("/events/update-date/:eventId", validToken, async (req, res) => {
   const { eventId } = req.params;
   const userId = req.userId;
   const { newDate } = req.body;
-  const validMonthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
   try {
     const existingEvent = await Event.findOne({
       userId: userId,
