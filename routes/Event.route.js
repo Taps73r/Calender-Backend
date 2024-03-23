@@ -93,6 +93,7 @@ router.post("/events", validToken, async (req, res) => {
 
 router.get("/events/:year/:month", validToken, async (req, res) => {
   const { year, month } = req.params;
+  const userId = req.userId;
 
   if (!validMonthNames.includes(month)) {
     return res.status(400).send("Invalid month value");
@@ -100,6 +101,7 @@ router.get("/events/:year/:month", validToken, async (req, res) => {
 
   try {
     const events = await Event.find({
+      userId: userId,
       "date.year": parseInt(year),
       "date.month": month,
     });
@@ -308,7 +310,11 @@ router.get("/events/:title", validToken, async (req, res) => {
 
     const { year, month } = event.date;
 
-    const events = await Event.find({ "date.year": year, "date.month": month });
+    const events = await Event.find({
+      userId: userId,
+      "date.year": parseInt(year),
+      "date.month": month,
+    });
 
     const daysInMonth = new Date(
       year,
