@@ -91,6 +91,21 @@ app.post("/events", validToken, async (req, res) => {
   const { title, description, color, date } = req.body;
   const userId = req.userId;
 
+  const validMonthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
   try {
     const existingEvent = await Event.findOne({
       userId: userId,
@@ -105,6 +120,39 @@ app.post("/events", validToken, async (req, res) => {
         .json({ message: "Event already exists for this date" });
     }
 
+    // Отримуємо інформацію про свята з API
+    const countryCode = "UA"; // Код країни України
+    const holidaysResponse = await axios.get(
+      `https://date.nager.at/api/v3/PublicHolidays/${date.year}/${countryCode}`
+    );
+    const holidays = holidaysResponse.data;
+
+    // Перевіряємо, чи дата події збігається з будь-яким святом
+    let holiday = null;
+    for (const holidayData of holidays) {
+      const holidayDate = new Date(holidayData.date);
+      if (
+        holidayDate.getFullYear() === date.year &&
+        holidayDate.getMonth() === validMonthNames.indexOf(date.month) &&
+        holidayDate.getDate() === date.day
+      ) {
+        // Якщо дата події збігається зі святом, то зберігаємо інформацію про це свято
+        holiday = {
+          id: holidayData.name,
+          title: holidayData.localName,
+          description: holidayData.name,
+          color: "#ffb3c1",
+          date: {
+            year: holidayDate.getFullYear(),
+            month: validMonthNames[holidayDate.getMonth()],
+            day: holidayDate.getDate(),
+          },
+        };
+        break;
+      }
+    }
+
+    // Створюємо подію
     const event = new Event({
       userId: userId,
       title: title,
@@ -134,6 +182,7 @@ app.post("/events", validToken, async (req, res) => {
       year: date.year,
       dayOfWeek: date.dayOfWeek,
       event: eventData,
+      holiday: holiday, // Додаємо інформацію про свято до відповіді
     };
 
     res.status(201).json(response);
